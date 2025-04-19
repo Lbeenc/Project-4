@@ -4,15 +4,7 @@
 #include <unistd.h>
 #include <sys/msg.h>
 #include <time.h>
-
-#define MSG_KEY 0x1234
-#define MAX_PROCESSES 18
-
-typedef struct {
-    long mtype;
-    int usedTime;
-    int willTerminate;
-} Message;
+#include "shared.h"
 
 int main() {
     srand(getpid());
@@ -29,3 +21,4 @@ int main() {
     msgsnd(msgID, &msg, sizeof(Message) - sizeof(long), 0);
     return 0;
 }
+
