@@ -1,4 +1,4 @@
-// Makefile
+cat > Makefile << 'EOF'
 all: oss worker
 
 oss: oss.c shared.h
@@ -9,3 +9,4 @@ worker: worker.c shared.h
 
 clean:
 	rm -f oss worker *.o log.txt
+EOF
