@@ -40,8 +40,8 @@ void cleanup(int sig) {
     shmctl(shmClockID, IPC_RMID, NULL);
     shmdt(pcbTable);
     shmctl(shmPCBID, IPC_RMID, NULL);
-    fclose(logFile);
-    printf("\n[oss] Cleaned up resources. Exiting.\n");
+    if (logFile) fclose(logFile);
+    printf("\n[oss] Resources cleaned. Exiting.\n");
     exit(0);
 }
 
@@ -57,7 +57,7 @@ void forkWorker(int index) {
     pid_t pid = fork();
     if (pid == 0) {
         execl("./worker", "worker", NULL);
-        perror("execl");
+        perror("execl failed");
         exit(1);
     }
     pcbTable[index].pid = pid;
@@ -66,6 +66,7 @@ void forkWorker(int index) {
     pcbTable[index].queueLevel = 0;
     pcbTable[index].occupied = 1;
     enqueue(0, index);
+    printf("Forked worker %d (PID: %d)\n", index, pid);
     totalProcs++;
     activeProcs++;
 }
@@ -105,9 +106,19 @@ int main() {
             msg.mtype = pcbTable[pidIndex].pid;
             msg.usedTime = quantum;
             msg.willTerminate = 0;
-            msgsnd(msgID, &msg, sizeof(Message) - sizeof(long), 0);
 
-            msgrcv(msgID, &msg, sizeof(Message) - sizeof(long), getpid(), 0);
+            printf("[oss] Sending quantum %d to PID %d\n", quantum, pcbTable[pidIndex].pid);
+            if (msgsnd(msgID, &msg, sizeof(Message) - sizeof(long), 0) == -1) {
+                perror("msgsnd failed");
+                continue;
+            }
+
+            if (msgrcv(msgID, &msg, sizeof(Message) - sizeof(long), getpid(), 0) == -1) {
+                perror("msgrcv failed");
+                continue;
+            }
+
+            printf("[oss] Received from PID %d: usedTime=%d, willTerminate=%d\n", pcbTable[pidIndex].pid, msg.usedTime, msg.willTerminate);
 
             incrementClock(msg.usedTime);
             pcbTable[pidIndex].totalCpuTime += msg.usedTime;
@@ -115,6 +126,7 @@ int main() {
 
             if (msg.willTerminate) {
                 fprintf(logFile, "Terminated: PID %d at %u:%u\n", pcbTable[pidIndex].pid, simClock->seconds, simClock->nanoseconds);
+                fflush(logFile);
                 kill(pcbTable[pidIndex].pid, SIGTERM);
                 waitpid(pcbTable[pidIndex].pid, NULL, 0);
                 pcbTable[pidIndex].occupied = 0;
@@ -131,3 +143,4 @@ int main() {
     cleanup(0);
     return 0;
 }
+
