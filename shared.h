@@ -11,11 +11,13 @@
 #define MAX_TOTAL_PROCS 40
 #define NUM_QUEUES 3
 
+// Simulated Clock
 typedef struct {
     unsigned int seconds;
     unsigned int nanoseconds;
 } SimClock;
 
+// Process Control Block
 typedef struct {
     int occupied;
     pid_t pid;
@@ -27,8 +29,11 @@ typedef struct {
     int blocked;
 } PCB;
 
+// Message structure for IPC
 typedef struct {
     long mtype;
     int usedTime;
     int willTerminate;
 } Message;
+
+#endif // SHARED_H
